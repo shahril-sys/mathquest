@@ -1,0 +1,13 @@
+services:
+  mathquest:
+    build: .
+    ports: ["3000:3000"]
+    environment:
+      SECURE_COOKIES: "${SECURE_COOKIES:-false}"   # tetapkan true di belakang HTTPS (proksi terbalik)
+      SESSION_HOURS: "12"
+      DEMO_PASSWORD: "${DEMO_PASSWORD:-MathQuest#2026}"
+    volumes:
+      - mathquest-data:/data
+    restart: unless-stopped
+volumes:
+  mathquest-data:
