@@ -11,6 +11,6 @@ console.log(JSON.stringify(rows));
 assert.deepEqual(rows, [
   ['tahun', 'topik', 'soalan', 'jawapan', 'penjelasan'],
   ['1', 'tambah_tolak', 'Berapakah 3 + 4, kira "dengan jari"?', '7', 'Tiga tambah empat ialah tujuh. Émoji 🎉 & <tag>'],
-  ['2', 'pecahan', 'Berapakah 1/2 + 1/4?', '0.75', ''],
+  ['2', 'pecahan', 'Berapakah 1/2 + 1/4?', '0.75'], // LibreOffice/Excel tidak menulis sel kosong di hujung baris
 ]);
 console.log('Fail Excel sebenar dibaca dengan betul.');
