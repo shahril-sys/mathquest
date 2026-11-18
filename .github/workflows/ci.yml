@@ -1,0 +1,51 @@
+name: CI
+on:
+  push:
+    branches: [main, ci-docker-xlsx]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm test
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ujian asap imej Docker sebenar
+        run: bash scripts/docker-smoke.sh
+      - name: Pastikan mod Docker (bukan simulasi) digunakan
+        run: bash scripts/docker-smoke.sh 2>&1 | tee /tmp/smoke.log | tail -3 && grep -q "Mod Docker" /tmp/smoke.log
+
+  xlsx-real:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Pasang LibreOffice Calc
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libreoffice-calc
+      - name: Hasilkan fail .xlsx sebenar daripada CSV
+        run: |
+          mkdir -p /tmp/x && cd /tmp/x
+          printf '\xef\xbb\xbftahun,topik,soalan,jawapan,penjelasan\n1,tambah_tolak,"Berapakah 3 + 4, kira ""dengan jari""?",7,"Tiga tambah empat ialah tujuh. Émoji 🎉 & <tag>"\n2,pecahan,Berapakah 1/2 + 1/4?,0.75,\n' > soalan.csv
+          soffice --headless --convert-to 'xlsx:Calc MS Excel 2007 XML' --infilter='CSV:44,34,76,1' soalan.csv
+          ls -la soalan.xlsx
+          unzip -l soalan.xlsx
+      - name: Baca dengan pembaca xlsx kami
+        run: node scripts/xlsx-check.mjs /tmp/x/soalan.xlsx
+      - name: Fail templat kami boleh dibuka oleh LibreOffice (tukar balik ke CSV)
+        run: |
+          node --input-type=module -e "
+          import fs from 'node:fs';
+          import { writeXlsx } from './src/lib/xlsx.js';
+          import { TEMPLATE_ROWS } from './src/services/questions.js';
+          fs.writeFileSync('/tmp/x/templat.xlsx', writeXlsx(TEMPLATE_ROWS));"
+          cd /tmp/x && soffice --headless --convert-to csv:"Text - txt - csv (StarCalc)":44,34,76 templat.xlsx
+          cat templat.csv
+          grep -q "tahun,topik,kesukaran" templat.csv
+          grep -q "3 + 4 = ?" templat.csv
