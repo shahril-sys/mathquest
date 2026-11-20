@@ -21,12 +21,9 @@ const PRIZES = [
   ['Buku Cerita', 'Buku cerita kanak-kanak pilihan.', '📚', 1200, 1, 10], ['Topi MathQuest', 'Topi rasmi MathQuest.', '🧢', 2500, 3, 4],
 ];
 
-export function seedDemo(db, { password = 'MathQuest#2026', seed = 20260101, simulate = true } = {}) {
-  const r = makeRng(seed);
-  const hash = hashPassword(password);
+/** Kandungan asas kongsi semua sekolah: topik, dunia, tahap, lencana dan bank soalan. Tiada pengguna atau sekolah. */
+export function seedContent(db, r = makeRng(20260101)) {
   tx(db, () => {
-    db.prepare("INSERT INTO schools(id, name, code) VALUES (1, 'SK MathQuest Demo', 'DEMO001')").run();
-    saveSettings(db, 1, DEFAULT_SETTINGS);
     for (const [code, name] of TOPICS) db.prepare('INSERT INTO mathematics_topics(code, name) VALUES (?,?)').run(code, name);
     const topicId = (c) => db.prepare('SELECT id FROM mathematics_topics WHERE code = ?').get(c).id;
 
@@ -38,28 +35,7 @@ export function seedDemo(db, { password = 'MathQuest#2026', seed = 20260101, sim
           .run(Number(res.lastInsertRowid), l.level_no, l.title, l.difficulty, JSON.stringify(l.generators), l.num_questions, l.pass_percent, l.time_limit_sec, l.is_boss);
       }
     });
-    for (const b of BADGES) db.prepare('INSERT INTO achievement_badges(code, name, description, icon, criteria_type, criteria) VALUES (?,?,?,?,?,?)').run(b.code, b.name, b.description, b.icon, b.criteria_type, JSON.stringify(b.criteria));
-
-    const mkUser = (username, role, name, mustChange = 0) => Number(db.prepare('INSERT INTO users(school_id, username, password_hash, role, display_name, must_change_password) VALUES (1,?,?,?,?,?)').run(username, hash, role, name, mustChange).lastInsertRowid);
-    mkUser('admin', 'pentadbir', 'Pentadbir Sekolah');
-    db.prepare("UPDATE users SET is_platform_admin = 1 WHERE username = 'admin'").run();
-    const classNames = ['1 Cemerlang', '2 Gemilang', '3 Terbilang', '4 Bestari', '5 Harmoni', '6 Cemerlang'];
-    const classIds = classNames.map((n, i) => Number(db.prepare('INSERT INTO classes(school_id, name, year) VALUES (1,?,?)').run(n, i + 1).lastInsertRowid));
-    [['guru1', 'Cikgu Aminah', [0, 1, 2]], ['guru2', 'Cikgu Raju', [3, 4, 5]]].forEach(([u, n, cls]) => {
-      const tid = mkUser(u, 'guru', n);
-      db.prepare('INSERT INTO teachers(user_id) VALUES (?)').run(tid);
-      for (const c of cls) db.prepare('INSERT INTO teacher_classes(teacher_id, class_id) VALUES (?,?)').run(tid, classIds[c]);
-    });
-    for (let i = 0; i < 30; i++) {
-      const year = Math.floor(i / 5) + 1;
-      const uid = mkUser(`M26${String(i + 1).padStart(3, '0')}`, 'murid', STUDENT_NAMES[i], i === 29 ? 1 : 0);
-      db.prepare('INSERT INTO students(user_id, class_id, year, avatar, setup_done) VALUES (?,?,?,?,?)').run(uid, classIds[year - 1], year, AVATARS[i % AVATARS.length], i === 29 ? 0 : 1);
-    }
-
-    PRIZES.forEach(([name, desc, emoji, cost, minYear, stock]) => {
-      const rid = Number(db.prepare('INSERT INTO reward_catalog(school_id, name, description, emoji, points_cost, min_year, limit_per_student) VALUES (1,?,?,?,?,?,?)').run(name, desc, emoji, cost, minYear, cost >= 1500 ? 1 : null).lastInsertRowid);
-      db.prepare('INSERT INTO reward_inventory(reward_id, stock) VALUES (?,?)').run(rid, stock);
-    });
+    for (const b of BADGES) db.prepare('INSERT OR IGNORE INTO achievement_badges(code, name, description, icon, criteria_type, criteria) VALUES (?,?,?,?,?,?)').run(b.code, b.name, b.description, b.icon, b.criteria_type, JSON.stringify(b.criteria));
 
     // Verified question bank: generated from validated templates (answers computed, not typed), then stored for admin editing.
     const seen = new Set();
@@ -82,6 +58,38 @@ export function seedDemo(db, { password = 'MathQuest#2026', seed = 20260101, sim
         }
       }
     }
+  });
+}
+
+export function seedDemo(db, { password = 'MathQuest#2026', seed = 20260101, simulate = true } = {}) {
+  const r = makeRng(seed);
+  const hash = hashPassword(password);
+  tx(db, () => {
+    db.prepare("INSERT INTO schools(id, name, code) VALUES (1, 'SK MathQuest Demo', 'DEMO001')").run();
+    saveSettings(db, 1, DEFAULT_SETTINGS);
+    seedContent(db, r);
+    const topicId = (c) => db.prepare('SELECT id FROM mathematics_topics WHERE code = ?').get(c).id; void topicId;
+    const mkUser = (username, role, name, mustChange = 0) => Number(db.prepare('INSERT INTO users(school_id, username, password_hash, role, display_name, must_change_password) VALUES (1,?,?,?,?,?)').run(username, hash, role, name, mustChange).lastInsertRowid);
+    mkUser('admin', 'pentadbir', 'Pentadbir Sekolah');
+    db.prepare("UPDATE users SET is_platform_admin = 1 WHERE username = 'admin'").run();
+    const classNames = ['1 Cemerlang', '2 Gemilang', '3 Terbilang', '4 Bestari', '5 Harmoni', '6 Cemerlang'];
+    const classIds = classNames.map((n, i) => Number(db.prepare('INSERT INTO classes(school_id, name, year) VALUES (1,?,?)').run(n, i + 1).lastInsertRowid));
+    [['guru1', 'Cikgu Aminah', [0, 1, 2]], ['guru2', 'Cikgu Raju', [3, 4, 5]]].forEach(([u, n, cls]) => {
+      const tid = mkUser(u, 'guru', n);
+      db.prepare('INSERT INTO teachers(user_id) VALUES (?)').run(tid);
+      for (const c of cls) db.prepare('INSERT INTO teacher_classes(teacher_id, class_id) VALUES (?,?)').run(tid, classIds[c]);
+    });
+    for (let i = 0; i < 30; i++) {
+      const year = Math.floor(i / 5) + 1;
+      const uid = mkUser(`M26${String(i + 1).padStart(3, '0')}`, 'murid', STUDENT_NAMES[i], i === 29 ? 1 : 0);
+      db.prepare('INSERT INTO students(user_id, class_id, year, avatar, setup_done) VALUES (?,?,?,?,?)').run(uid, classIds[year - 1], year, AVATARS[i % AVATARS.length], i === 29 ? 0 : 1);
+    }
+
+    PRIZES.forEach(([name, desc, emoji, cost, minYear, stock]) => {
+      const rid = Number(db.prepare('INSERT INTO reward_catalog(school_id, name, description, emoji, points_cost, min_year, limit_per_student) VALUES (1,?,?,?,?,?,?)').run(name, desc, emoji, cost, minYear, cost >= 1500 ? 1 : null).lastInsertRowid);
+      db.prepare('INSERT INTO reward_inventory(reward_id, stock) VALUES (?,?)').run(rid, stock);
+    });
+
   });
   if (simulate) simulatePlay(db, r);
 }

@@ -11,7 +11,7 @@ cp .env.example .env        # pilihan
 npm run migrate             # cipta/kemas kini pangkalan data (data/mathquest.db)
 npm run seed                # data demo (sekali sahaja, ±10 saat)
 npm start                   # http://localhost:3000
-npm test                    # 40 ujian automatik
+npm test                    # 46 ujian automatik
 ```
 
 Akaun demo (kata laluan `MathQuest#2026`, ubah melalui `DEMO_PASSWORD`):
@@ -44,6 +44,7 @@ Import soalan menerima **Excel (.xlsx)** atau CSV. Muat turun templat daripada d
 | `PORT`, `HOST` | 3000, 0.0.0.0 | alamat pelayan |
 | `DATA_DIR` | `./data` | pangkalan data dan imej muat naik |
 | `SECURE_COOKIES` | false | **true** apabila di belakang HTTPS |
+| `TRUST_PROXY` | 0 | bilangan proksi terbalik di hadapan aplikasi (1 untuk Caddy/Nginx); lihat docs/DEPLOY.md |
 | `SESSION_HOURS` | 12 | tempoh sesi log masuk |
 | `DEMO_PASSWORD` | `MathQuest#2026` | hanya untuk `npm run seed` |
 
@@ -66,21 +67,16 @@ Data disimpan dalam volum `mathquest-data` (`/data`). Untuk produksi:
 3. Jadualkan `npm run backup` harian (cron) dan simpan salinan di luar pelayan.
 4. Satu proses sahaja boleh menulis ke SQLite; jangan jalankan beberapa replika pada volum sama.
 
-Cipta pentadbir pertama pada pangkalan data kosong:
+Cipta sekolah dan pentadbir platform pertama pada pangkalan data kosong (tanpa data demo):
 
 ```bash
-node --disable-warning=ExperimentalWarning -e "
-import('./src/db.js').then(async (d) => { const { hashPassword } = await import('./src/lib/security.js');
-const db = d.openDb(); d.migrate(db);
-db.prepare(\"INSERT INTO schools(id,name,code) VALUES (1,'Nama Sekolah','SEK001')\").run();
-db.prepare(\"INSERT INTO users(school_id,username,password_hash,role,display_name,must_change_password) VALUES (1,'admin',?, 'pentadbir','Pentadbir',1)\").run(hashPassword('KataLaluanSementara1'));
-console.log('Pentadbir dicipta'); })"
+npm run create-admin -- --school "SK Taman Bahagia" --code SKTB01 --user SKTB01-admin --name "Pentadbir TB"
 ```
-Kemudian tambah topik, dunia dan tahap melalui `seedDemo` (rujuk `src/seed.js`) atau salin bahagian dunia/tahap/lencana daripadanya. Tandakan pentadbir itu sebagai pentadbir platform: `UPDATE users SET is_platform_admin = 1 WHERE username = 'admin';`
+Panduan lengkap (HTTPS, proksi, sandaran harian, senarai semak): [docs/DEPLOY.md](docs/DEPLOY.md). Contoh konfigurasi ada dalam `deploy/`.
 
 ## Ujian
 
-- `npm test` (40 ujian): jana soalan (semua penjana × tahun × kesukaran, jawapan disemak semula secara bebas), pengesahan jawapan, pembukaan tahap, pengiraan mata, pencegahan ganjaran pendua dan penternakan, tebusan, mata tidak cukup, stok habis, tolak/batal dengan bayaran balik idempoten, kebenaran peranan, CSRF, kunci akaun, muat naik imej, import CSV, **tebusan serentak** melalui HTTP, pengasingan data antara sekolah, tetapan tahap setiap sekolah, dan import/eksport Excel.
+- `npm test` (46 ujian): jana soalan (semua penjana × tahun × kesukaran, jawapan disemak semula secara bebas), pengesahan jawapan, pembukaan tahap, pengiraan mata, pencegahan ganjaran pendua dan penternakan, tebusan, mata tidak cukup, stok habis, tolak/batal dengan bayaran balik idempoten, kebenaran peranan, CSRF, kunci akaun, muat naik imej, import CSV, **tebusan serentak** melalui HTTP, pengasingan data antara sekolah, tetapan tahap setiap sekolah, dan import/eksport Excel.
 - `bash scripts/docker-smoke.sh`: bina imej, jalankan, seed, log masuk dan semak kesihatan. Jika Docker tidak tersedia, skrip menyalin hanya fail yang disalin oleh Dockerfile dan menjalankan aplikasi dari susun atur itu.
 - `node scripts/curriculum-review.js`: menjana `docs/KURIKULUM-REVIEW.md` (templat soalan mengikut tahun, julat nombor, contoh dan lajur semakan guru).
 - `node scripts/ui-smoke.mjs`: ujian hujung-ke-hujung UI dengan Chrome tanpa kepala (perlu `chrome` dalam PATH). Murid bermain satu tahap penuh melalui UI, kemudian halaman murid/guru/pentadbir disemak untuk ralat konsol; tangkapan skrin disimpan di `docs/screenshots/`.

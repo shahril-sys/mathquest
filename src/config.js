@@ -24,6 +24,8 @@ export const config = {
   publicDir: path.join(ROOT, 'public'),
   migrationsDir: path.join(ROOT, 'migrations'),
   secureCookies: process.env.SECURE_COOKIES === 'true',
+  // Bilangan proksi dipercayai di hadapan aplikasi (0 = tiada). Ditentukan oleh pemasang; X-Forwarded-For tidak dipercayai jika 0.
+  trustProxy: Math.max(0, Math.min(5, Number(process.env.TRUST_PROXY || 0))),
   sessionHours: Number(process.env.SESSION_HOURS || 12),
   demoPassword: process.env.DEMO_PASSWORD || 'MathQuest#2026',
 };

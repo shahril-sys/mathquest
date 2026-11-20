@@ -1,0 +1,13 @@
+# Caddy: HTTPS automatik (Let's Encrypt). Gantikan domain, kemudian: caddy run --config deploy/Caddyfile
+mathquest.sekolah.edu.my {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	request_body {
+		max_size 2MB
+	}
+}
+# Aplikasi: TRUST_PROXY=1 dan SECURE_COOKIES=true
