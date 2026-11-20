@@ -4,6 +4,7 @@ services:
     ports: ["3000:3000"]
     environment:
       SECURE_COOKIES: "${SECURE_COOKIES:-false}"   # tetapkan true di belakang HTTPS (proksi terbalik)
+      TRUST_PROXY: "${TRUST_PROXY:-0}"
       SESSION_HOURS: "12"
       DEMO_PASSWORD: "${DEMO_PASSWORD:-MathQuest#2026}"
     volumes:

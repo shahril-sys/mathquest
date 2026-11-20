@@ -20,6 +20,7 @@ async function play(el, params, ctx) {
   if (st.status === 'finished') { location.hash = `#/hasil/${sid}`; return; }
   if (st.status !== 'active') { toast('Sesi ini sudah tamat.', 'err'); location.hash = '#/peta'; return; }
   const results = [...st.answered];
+  const streak = () => { let n = 0; for (let i = results.length - 1; i >= 0 && results[i]; i--) n++; return n; };
   let idx = st.current;
   const title = st.kind === 'daily' ? '⚡ Cabaran Harian' : `${st.level.world_name} · Tahap ${st.level.level_no}: ${st.level.title}`;
   const wrap = h('div', { class: 'game' });
@@ -77,7 +78,7 @@ async function play(el, params, ctx) {
 
     let hintBtn = h('button', { class: 'btn ghost sm', onclick: async () => { try { const hnt = await api(`/api/sessions/${sid}/hint`, { method: 'POST', body: { idx } }); hintBox.textContent = `💡 ${hnt.hint}`; hintBtn.disabled = true; } catch (e) { toast(e.message, 'err'); } } }, '💡 Petunjuk');
 
-    clear(wrap).append(h('div', { class: 'row between' }, h('a', { href: st.level ? `#/peta/${st.level.world_code}` : '#/' }, '✕ Keluar (kemajuan sesi disimpan)'), h('b', {}, `✔ ${results.filter(Boolean).length}`)), h('h2', { style: 'margin-top:.5rem' }, title), dots(),
+    clear(wrap).append(h('div', { class: 'row between' }, h('a', { href: st.level ? `#/peta/${st.level.world_code}` : '#/' }, '✕ Keluar (kemajuan sesi disimpan)'), h('b', { 'aria-live': 'polite' }, `✔ ${results.filter(Boolean).length}`, streak() >= 3 ? ` · 🔥 ×${streak()}` : '')), h('h2', { style: 'margin-top:.5rem' }, title), dots(),
       h('div', { class: 'qcard' }, h('div', { class: 'qmeta' }, h('span', {}, `Soalan ${idx + 1} / ${st.total}`), h('span', {}, q.time_limit_sec ? `⏱️ ${q.time_limit_sec}s` : ' ')),
         timerBar ? h('div', { class: 'timer', role: 'timer', 'aria-label': 'Baki masa' }, timerBar) : null,
         h('div', { class: 'qtext' }, q.text), q.input === 'count' ? null : visual(q.visual), hintBox, body, h('div', { style: 'margin-top:1rem' }, hintBtn), feedback));

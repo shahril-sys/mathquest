@@ -10,7 +10,15 @@ import registerTeacher from './routes/teacher.js';
 import registerAdmin from './routes/admin.js';
 import registerPlatform from './routes/platform.js';
 
-export function createApp(db, { rateLimit = true } = {}) {
+/** IP klien: dengan N proksi dipercayai, ambil entri ke-N dari kanan X-Forwarded-For (entri kiri boleh dipalsukan klien). */
+export function clientIp(req, trust = config.trustProxy) {
+  const direct = req.socket.remoteAddress || 'ip';
+  if (!trust) return direct;
+  const parts = String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean);
+  return parts[parts.length - trust] || direct;
+}
+
+export function createApp(db, { rateLimit = true, trustProxy } = {}) {
   const router = new Router();
   registerAuth(router);
   registerStudent(router);
@@ -23,7 +31,7 @@ export function createApp(db, { rateLimit = true } = {}) {
   fs.mkdirSync(config.uploadDir, { recursive: true });
 
   async function api(req, res, url) {
-    const ip = req.socket.remoteAddress || 'ip';
+    const ip = clientIp(req, trustProxy ?? config.trustProxy);
     if (rateLimit && !general.check(ip)) throw new AppError(429, 'Terlalu banyak permintaan. Cuba sebentar lagi.');
     const m = router.match(req.method, url.pathname);
     if (!m) throw new AppError(404, 'Laluan tidak dijumpai.');

@@ -342,6 +342,8 @@ export function finishSession(db, studentId, sessionId) {
       if (passed) give('daily', settings.points_daily, `daily:${s.daily_date}:${studentId}`, 'Cabaran harian');
       stars = passed ? (percent === 100 ? 3 : percent >= 90 ? 2 : 1) : 0;
     }
+    // tandakan sesi selesai DAHULU supaya sesi ini turut dikira dalam kriteria lencana (cth markah penuh ke-10)
+    db.prepare(`UPDATE game_sessions SET status = 'finished', correct = ?, percent = ?, passed = ?, finished_at = datetime('now') WHERE id = ?`).run(correct, percent, passed ? 1 : 0, sessionId);
     const newBadges = evaluateBadges(db, studentId);
     const fresh = db.prepare('SELECT points_balance, points_lifetime FROM students WHERE user_id = ?').get(studentId);
     const result = {
@@ -350,8 +352,7 @@ export function finishSession(db, studentId, sessionId) {
       world_completed: worldCompleted, next_level: unlockedNext, new_badges: newBadges,
       level: level ? { id: level.id, title: level.title, level_no: level.level_no, world_name: level.world_name } : null,
     };
-    db.prepare(`UPDATE game_sessions SET status = 'finished', correct = ?, percent = ?, passed = ?, finished_at = datetime('now'), result = ? WHERE id = ?`)
-      .run(correct, percent, passed ? 1 : 0, JSON.stringify(result), sessionId);
+    db.prepare('UPDATE game_sessions SET result = ? WHERE id = ?').run(JSON.stringify(result), sessionId);
     return result;
   });
 }

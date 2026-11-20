@@ -1,0 +1,18 @@
+# systemd: /etc/systemd/system/mathquest.service  ->  systemctl enable --now mathquest
+[Unit]
+Description=MathQuest Adventure
+After=network.target
+
+[Service]
+User=mathquest
+WorkingDirectory=/opt/mathquest
+EnvironmentFile=/opt/mathquest/.env
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning src/server.js
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/mathquest/data
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
